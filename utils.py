@@ -136,11 +136,11 @@ def align(arr, tmats, reg):
 
 def read_imagej_rois(p_roi, arr):
 
-    n_yx = arr.shape[-2:]
+    n_y, n_x = arr.shape[-2:]
     d_roi = read_roi_zip(p_roi)
 
     # all-false array with shape: (n_roi, n_y,  n_x)
-    r = np.zeros((len(d_roi), *n_yx)).astype(bool)
+    r = np.zeros((len(d_roi), n_y, n_x)).astype(bool)
 
     # set rois mask to true
     for i, v in enumerate(d_roi.values()):
@@ -158,6 +158,10 @@ def read_imagej_rois(p_roi, arr):
         else:
             print(f'WARNING skipping ROI {i+1}, because it has type {v["type"]} not implemented')
             continue
+        
+        # ignore out of bounds
+        m = ( y < n_y ) * ( x < n_x )
+        x, y = x[m], y[m]
         
         r[i, y, x] = True  
 
