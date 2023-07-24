@@ -3,33 +3,44 @@ import pandas as pd
 
 
 from scipy.ndimage import gaussian_filter
-from tifffile import imwrite, imread
+from tifffile import imwrite, imread, TiffFile
 from pystackreg import StackReg
 from read_roi import read_roi_zip
 from skimage.draw import polygon, ellipse
 from scipy.io import loadmat
-from scipy.ndimage import gaussian_filter
 from scipy.stats import zscore
 
 
 from joblib import Parallel, delayed, parallel_backend
 
 import matplotlib.pylab as plt
+from matplotlib.colors import CenteredNorm
 import seaborn as sns
 from skvideo.io import vwrite
 from PIL import Image, ImageDraw
 from skimage.color import gray2rgb
 from matplotlib import colors
 
+from pathlib import Path
+
 
 
 ###############
 # file handling 
 
-def load_tiff(file):
+def load_tiff(file, correct_offset=False):
 
+    # load data
     img = imread(file)
     print(f'INFO loaded tiff stack from {file} with shape {img.shape}')
+
+    # correct for scanimage offsets
+    if correct_offset:
+        tif = TiffFile(file)
+        offsets = tif.scanimage_metadata['FrameData']['SI.hScan2D.channelOffsets']
+        img[:, 0] -= offsets[0]
+        img[:, 1] -= offsets[1]
+        print(f'INFO added offsets: {offsets[0]} (channel 1) | {offsets[1]} (channel 2)')
 
     return img
 
@@ -53,6 +64,58 @@ def write_tif(file, arr):
     
     print(f'INFO writing images to {file}')
     imwrite(file, arr, photometric='minisblack')
+
+def fname(root_file, new_ending):
+
+    # helper function: file name in parent directory
+
+    f = Path(root_file)
+    n = str(new_ending)
+
+    fn  = f.parent / '{}_{}'.format(f.with_suffix('').name, n)
+
+    return fn
+
+def get_roi_zip_file(p_tif):
+
+    g = p_tif.parent.glob('*RoiSet.zip')
+
+    try:
+        p_zip = next(g)
+    except StopIteration:
+        print(f'WARNING no *RoiSet.zip file found')
+        return
+
+    try:
+        next(g)
+        print(f'WARNING multiple *RoiSet.zip files found')
+        return
+    except StopIteration:
+        return p_zip
+    
+
+def get_matlab_files(p_tif):
+
+    p_ball = p_tif.parent / (p_tif.name.split('_')[0] + '.mat')
+    if not p_ball.is_file():
+        print('WARNING ball velocity matlab file not found')
+        return
+
+    g = p_tif.parent.glob('*-actions.mat')
+
+    try:
+        p_beh = next(g)
+    except StopIteration:
+        print(f'WARNING no *actions.mat file found')
+        return
+    
+    try:
+        next(g)
+        print(f'WARNING multiple *actions.mat files found')
+        return
+    except StopIteration:
+        return p_ball, p_beh
+
 
 ###############
 # data handling
@@ -205,7 +268,7 @@ def get_mean_trace(rois, arr, subtract_background=False, sigma=0):
 
 ##########
 # behavior
-def load_behavior(p_mat, beh_keys=['pushing', 'hindLegRub', 'frontLegRub', 'headGrooming', 'abdomenGrooming', 'ObL1+R1']):
+def load_behavior(p_mat, beh_keys=['pushing', 'hindLegRub', 'frontLegRub', 'headGrooming', 'abdomenGrooming', 'ObL1+R1', 'PER', 'midLeft+hindLegRub', 'midRight+hindLegRub']):
 
     m = loadmat(p_mat, squeeze_me=True, struct_as_record=False)
 
@@ -236,19 +299,19 @@ def resample(arr, sr, sr_new):
 
     return y_new
 
-def upsample_to_behavior(ca, beh, ball, f_ca, f_ball, f_beh):
+def upsample_to_behavior(ca, beh, ball, f_ca, f_ball, f_beh, ca2=None):
 
     y = np.zeros_like(ca[0])
     y = resample(y, f_ca, f_beh)
     x = np.arange(len(y))
 
-
     df = pd.DataFrame(index=x)
-    # df.loc[:, 't'] = df.index / f_beh
 
     for i, y in enumerate(ca):
         y = resample(y, f_ca, f_beh)
-        # y = zscore(y)
+        if ca2 is not None:
+            y2 = resample(ca2[i], f_ca, f_beh)
+            y /= y2
         df.loc[:, f'roi_{i+1}'] = y
 
     for j, y in zip('xyz', ball.T):
@@ -257,6 +320,7 @@ def upsample_to_behavior(ca, beh, ball, f_ca, f_ball, f_beh):
 
     for k, v in beh.items():
 
+        # boxcar
         y = np.zeros_like(x)
 
         arr = np.array(v, ndmin=2)
@@ -266,11 +330,24 @@ def upsample_to_behavior(ca, beh, ball, f_ca, f_ball, f_beh):
 
         df.loc[:, f'beh_{k}'] = y
 
+        # delta 
+        yi = np.zeros_like(x)
+        yf = np.zeros_like(x)
+
+        arr = np.array(v, ndmin=2)
+        if arr.any():
+            for f_i, f_f, _ in arr:
+                yi[f_i:f_i+1] = 1
+                yf[f_f:f_f+1] = 1
+
+        df.loc[:, f'behi_{k}'] = yi
+        df.loc[:, f'behf_{k}'] = yf
+
     return df
 
-def zscore_rois(df):
+def zscore_cols(df, col_start):
 
-    cols = [ c for c in df.columns if c.startswith('roi_') ]
+    cols = [ c for c in df.columns if c.startswith(col_start) ]
     cols_z = [ f'z_{c}' for c in cols ]
 
     df.loc[:, cols_z] = df.loc[:, cols].apply(zscore).values
@@ -297,40 +374,41 @@ def convolute_ca_kernel(df, f):
 
     kern = ca_kernel(tau_on, tau_off, f)
 
-    cols = [ c for c in df.columns if c.startswith('ball_') or c.startswith('beh_')]
+    cols = [ c for c in df.columns if c.startswith('ball_') or c.startswith('beh')]
     cols_new = [ f'conv_{c}' for c in cols ]
     df.loc[df.index, cols_new] = df.loc[df.index, cols].apply(np.convolve, axis=0, **{'v': kern, 'mode': 'same'}).values
 
     return df
 
-def calculate_pearson(df):
+def calculate_pearson(df, beh):
 
     c_roi = [ c for c in df.columns if c.startswith('z_roi_')]
-    c_ball = [ c for c in df.columns if c.startswith('conv_ball_') ]
-    c_beh = [ c for c in df.columns if c.startswith('conv_beh_')]
+    c_ball = [ c for c in df.columns if c.startswith('z_conv_ball_') ]
+    c_beh = [ c for c in df.columns if c.startswith(f'conv_{beh}_')]
     cols = c_roi + c_ball + c_beh
 
     with np.errstate(divide='ignore', invalid='ignore'): # ignore division by 0 warning: TODO better check array before calling corrcoef
-        c = np.corrcoef(df.loc[:, cols].T)
+        c = np.corrcoef(df.loc[:, cols].T.values)
+        # c = df.loc[:, cols].corr(method='pearson').values
 
     c[np.diag_indices(len(c))] = np.nan
 
     c_roi = [ c.replace('z_', '') for c in c_roi ] 
-    c_ball = [ c.replace('conv_', '') for c in c_ball ]
-    c_beh = [ c.replace('conv_beh_', '') for c in c_beh ]
+    c_ball = [ c.replace('z_conv_', '') for c in c_ball ]
+    c_beh = [ c.replace(f'conv_{beh}_', '') for c in c_beh ]
     cols = c_roi + c_ball + c_beh
 
     d = pd.DataFrame(data=c, index=cols, columns=cols)
 
     return d
 
-def calculate_ccf(df, dt, f):
+def calculate_ccf(df, dt, f, col1, col2, col2_):
 
     n = 2* dt * f + 1
     t = np.linspace(-dt, dt, n)
 
-    cols_1 = [ c for c in df.columns if c.startswith('roi_')]
-    cols_2 = [ c for c in df.columns if c.startswith('conv_ball_') or c.startswith('conv_beh_')]
+    cols_1 = [ c for c in df.columns if c.startswith(col1)]
+    cols_2 = [ c for c in df.columns if c.startswith(col2) or c.startswith(col2_)]
 
     l = []
     for k, df_k in df.groupby(['cond', 'fly', 'trial']):
@@ -396,8 +474,95 @@ def save_img(file, img):
     print(f'INFO saving normalized image to {file}')
     img.save(file)
 
+def align2events(df, beh, f, dt):
 
-def plot_data(df, f, path=''):
+    cols_roi = [ c for c in df.columns if c.startswith('z_roi_') ]
+    cols_ball = [ c for c in df.columns if c.startswith('ball_') ]
+    cols = cols_roi + cols_ball
+    
+    dn = int(dt * f)
+    s = np.arange(-dn, dn + 1)
+    l = []
+    n_good, n_bad = 0, 0
+
+    for (fly, trial), d in df.groupby(['fly', 'trial']):
+        ds = d.loc[:, beh]
+        i_ons = np.flatnonzero(np.diff(ds) == 1) + 1
+        idx_ons = ds.iloc[i_ons].index
+
+        for idx in idx_ons:
+            try: 
+                for c in cols:
+                    y = d.loc[idx - dn : idx + dn, c]
+                    df_new = pd.DataFrame({
+                        's': s,
+                        't': s / f,
+                        'fly': fly,
+                        'trial': trial,
+                        'y': y,
+                        'match': c,
+                        'onset': idx,
+                    })
+                    l.append(df_new)
+                n_good += 1
+
+            except ValueError:
+                print(f'WARNING skipping fly {fly} trial {trial} event {idx}')
+                n_bad += 1
+
+    data = pd.concat(l)
+    data.attrs['n_bad'] = n_bad
+    data.attrs['n_good'] = n_good
+    data.attrs['beh'] = beh
+    data.attrs['n_fly'] = len(data.groupby(['fly']).groups.keys())
+    data.attrs['n_trial'] = len(data.groupby(['fly', 'trial']).groups.keys())
+
+    return data
+
+def plot_aligned(df_al, path=''):
+
+    fig, axarr = plt.subplots(nrows=2, figsize=(10, 10))
+
+    ax = axarr[0]
+    df = df_al.loc[ df_al.loc[:, 'match'].str.contains('roi') ]
+
+    ax.axvline(0, ls=':', lw=.5, c='gray')
+    sns.lineplot(ax=ax, data=df, x='t', y='y', hue='match', errorbar='se', palette='muted')
+    ax.margins(x=0)
+
+    ax.set_xlabel('time [s]')
+    ax.set_ylabel('average zscored intensity')
+    ax.set_title('''\
+    Ca signal aligned to {}
+    averaged over {} flies ({} trials)
+    total of {} events ( {} skipped)
+    '''.format(
+        df.attrs['beh'],
+        df.attrs['n_fly'],
+        df.attrs['n_trial'],
+        df.attrs['n_good'],
+        df.attrs['n_bad'])
+        )
+
+    ax = axarr[1]
+    df = df_al.loc[ df_al.loc[:, 'match'].str.contains('ball') ]
+
+    ax.axvline(0, ls=':', lw=.5, c='gray')
+    sns.lineplot(ax=ax, data=df, x='t', y='y', hue='match', errorbar='se', palette='muted')
+    ax.margins(x=0)
+
+    ax.set_xlabel('time [s]')
+    ax.set_ylabel('average ball velocity')
+
+    fig.tight_layout()
+    if path:
+        fig.savefig(path)
+        plt.close(fig)
+
+
+def plot_data(df, f, zroi=True, path=''):
+
+    df = df.copy()
 
     c_roi = [ c for c in df.columns if c.startswith('roi_')]
     c_ball = [ c for c in df.columns if c.startswith('ball_')]
@@ -428,17 +593,30 @@ def plot_data(df, f, path=''):
         if c == c_roi[0]:
             ax2.legend()
 
+        with np.errstate(divide='ignore', invalid='ignore'): # ignore division by 0 warning
+            
+            if c.startswith('ball') or c.startswith('beh_'):
+                y = df.loc[:, c]
+                y_c = df.loc[:, f'conv_{c}']
+                y = y / y.max() * y_c.max()
+                ax.plot(x, y, color='gray', ls='--', lw=1)
+                ax.plot(x, y_c)
 
-        if c.startswith('ball') or c.startswith('beh'):
-            y = df.loc[:, c]
-            y_c = df.loc[:, f'conv_{c}']
-            y = y / y.max() * y_c.max()
-            ax.plot(x, y, color='gray', ls='--', lw=1)
-            ax.plot(x, y_c)
+                if c.startswith('beh'):
+                    y_c = df.loc[:, f'conv_{c}'.replace('beh', 'behi')]
+                    y_c /= y_c.max()
+                    ax.plot(x, y_c, color='C2', ls=':', lw=1)
 
-        elif c.startswith('roi'):
-            y = df.loc[:, f'z_{c}'].values
-            ax.plot(x, y)
+                    y_c = df.loc[:, f'conv_{c}'.replace('beh', 'behf')]
+                    y_c /= y_c.max()
+                    ax.plot(x, y_c, color='C3', ls=':', lw=1)
+
+            elif c.startswith('roi'):
+                if zroi:
+                    y = df.loc[:, f'z_{c}']
+                else:
+                    y = df.loc[:, c]
+                ax.plot(x, y)
         
 
         ax.set_title(c)
@@ -452,11 +630,11 @@ def plot_data(df, f, path=''):
         plt.close(fig)
 
 
-def plot_corr_heatmap(df, path=''):
+def plot_corr_heatmap(df, beh, path=''):
 
-    d = calculate_pearson(df)
+    d = calculate_pearson(df, beh)
 
-    fig, ax = plt.subplots()
+    fig, ax = plt.subplots(figsize=(10, 8))
 
     sns.heatmap(ax=ax, data=d, square=True, cmap='coolwarm', center=0)
 
@@ -465,11 +643,10 @@ def plot_corr_heatmap(df, path=''):
         fig.savefig(path)
         plt.close(fig)
 
-def plot_ccf(df, f, pool_fly=True, path=''):
+def plot_ccf(df, f, col1='z_roi_', col2='z_conv_ball_', col2_='conv_behi_', pool_fly=True, path=''):
 
-    d = calculate_ccf(df, dt=2, f=f)
+    d = calculate_ccf(df, dt=2, f=f, col1=col1, col2=col2, col2_=col2_)
     d = d.dropna(axis=0)
-
 
     kw_args = {
         'x': 't',
@@ -486,6 +663,43 @@ def plot_ccf(df, f, pool_fly=True, path=''):
     g.set_axis_labels('time lag [s]', 'norm CCF')
     
     fig = g.fig
+    fig.tight_layout()
+    if path:
+        fig.savefig(path)
+        plt.close(fig)
+
+def plot_corrmap(arr1, arr2, df, b, f_ca, f_beh, path=''):
+    
+    y = df.loc[:, b].values
+
+
+    fun = lambda x, y: np.corrcoef(resample(x, f_ca, f_beh), y)[0, 1]
+    
+    npy1 = Path(path).parent / f'corrmap_{b}_1.npy'
+    npy2 = Path(path).parent / f'corrmap_{b}_2.npy'
+
+    if npy1.exists() and npy2.exists():
+        img1 = np.load(npy1)
+        img2 = np.load(npy2)
+    else:
+        img1 = np.apply_along_axis(fun, 0, arr1, y)
+        img2 = np.apply_along_axis(fun, 0, arr2, y)
+        
+        np.save(npy1, img1)
+        np.save(npy2, img2)
+
+    fig, axarr = plt.subplots(ncols=2, figsize=(14, 4))
+
+    ax = axarr[0]
+    im = ax.imshow(img1, cmap='seismic', norm=CenteredNorm())
+    ax.set_title(f'{b} | ch 1')
+
+    plt.colorbar(im, ax=ax)
+
+    ax = axarr[1]
+    ax.imshow(img2, cmap='seismic', norm=CenteredNorm())
+    ax.set_title(f'{b} | ch 2')
+
     fig.tight_layout()
     if path:
         fig.savefig(path)
