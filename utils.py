@@ -472,7 +472,37 @@ def select_event(df, col, f, dt):
 
     return df
 
+#############
+# stimulation
 
+def get_onsets(arr, r_stim, r_rec, w=1, thresh=0.1, n_max=None):
+
+    # convert to binary array based on thresh
+    arr_bin = arr.copy()
+    arr_bin[ arr_bin < thresh] = 0
+    arr_bin[ arr_bin != 0 ] = 1
+    
+    # moving average and binary again
+    arr_avg = uniform_filter1d(arr_bin, int(w*r_stim))
+    arr_avg[ arr_avg != 0] = 1
+
+    # indices for onset in arr_avg
+    idx_avg = np.where(np.diff(arr_avg) == 1)[0]
+
+    # onsets in arr
+    idx = idx_avg + int(w*r_stim / 2)
+
+    # convert from sample to s
+    fs = idx / r_stim * r_rec
+    f_max = len(arr) / r_stim * r_rec
+
+    fs = np.round(fs, 0).astype(int)
+    f_max = np.round(f_max, 0).astype(int)
+
+    # limit number of stims
+    fs = fs[:n_max]
+
+    return fs, f_max
 
 
 ###############
@@ -709,7 +739,7 @@ def plot_corrmap(arr1, arr2, df, b, f_ca, f_beh, path=''):
         print(f'     {npy2}')
         img1 = np.load(npy1)
         img2 = np.load(npy2)
-        
+
     else:
         img1 = np.apply_along_axis(fun, 0, arr1, y)
         img2 = np.apply_along_axis(fun, 0, arr2, y)
