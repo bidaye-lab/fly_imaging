@@ -9,6 +9,8 @@ from read_roi import read_roi_zip
 from skimage.draw import polygon, ellipse
 from scipy.io import loadmat
 from scipy.stats import zscore
+from scipy.ndimage import uniform_filter1d
+
 
 
 from joblib import Parallel, delayed, parallel_backend
