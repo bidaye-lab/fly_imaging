@@ -446,6 +446,32 @@ def calculate_ccf(df, dt, f, col1, col2, col2_):
     
     return df_c
 
+def select_event(df, col, f, dt):
+
+    dn = int(dt * f)
+
+    l = []
+    for k, d in df.groupby(['fly', 'trial']):
+        ds = d.loc[:, col]
+        i_ons = np.flatnonzero(np.diff(ds) == 1) + 1
+        idx_ons = ds.iloc[i_ons].index
+        for idx in idx_ons:
+            try: 
+                d_ = d.loc[idx - dn : idx + dn, :]
+                l.append(d_)
+
+            except ValueError:
+                print(f'WARNING skipping fly {k[0]} trial {k[1]} event {idx}')
+
+    df = pd.concat(l, ignore_index=True)
+
+    # drop other behavior columns
+    c_beh = [ c for c in df.columns if 'beh' in c]
+    c_drop = [ c for c in c_beh if col.split('_')[-1] not in c]
+    df = df.drop(columns=c_drop)
+
+    return df
+
 
 
 
@@ -672,15 +698,18 @@ def plot_corrmap(arr1, arr2, df, b, f_ca, f_beh, path=''):
     
     y = df.loc[:, b].values
 
-
     fun = lambda x, y: np.corrcoef(resample(x, f_ca, f_beh), y)[0, 1]
     
     npy1 = Path(path).parent / f'corrmap_{b}_1.npy'
     npy2 = Path(path).parent / f'corrmap_{b}_2.npy'
 
     if npy1.exists() and npy2.exists():
+        print(f'INFO found precalculated files, loading from disk')
+        print(f'     {npy1}')
+        print(f'     {npy2}')
         img1 = np.load(npy1)
         img2 = np.load(npy2)
+        
     else:
         img1 = np.apply_along_axis(fun, 0, arr1, y)
         img2 = np.apply_along_axis(fun, 0, arr2, y)
