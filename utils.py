@@ -726,7 +726,7 @@ def plot_ccf(df, f, col1='z_roi_', col2='z_conv_ball_', col2_='conv_behi_', pool
         fig.savefig(path)
         plt.close(fig)
 
-def plot_corrmap(arr1, arr2, df, b, f_ca, f_beh, path=''):
+def plot_corrmap(arr1, arr2, df, b, f_ca, f_beh, cmap='bwr', path=''):
     
     y = df.loc[:, b].values
 
@@ -752,13 +752,13 @@ def plot_corrmap(arr1, arr2, df, b, f_ca, f_beh, path=''):
     fig, axarr = plt.subplots(ncols=2, figsize=(14, 4))
 
     ax = axarr[0]
-    im = ax.imshow(img1, cmap='seismic', norm=CenteredNorm())
+    im = ax.imshow(img1, cmap=cmap, norm=CenteredNorm())
     ax.set_title(f'{b} | ch 1')
 
     plt.colorbar(im, ax=ax)
 
     ax = axarr[1]
-    ax.imshow(img2, cmap='seismic', norm=CenteredNorm())
+    ax.imshow(img2, cmap=cmap, norm=CenteredNorm())
     ax.set_title(f'{b} | ch 2')
 
     fig.tight_layout()
