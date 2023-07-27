@@ -30,7 +30,7 @@ from pathlib import Path
 ###############
 # file handling 
 
-def load_tiff(file, correct_offset=False):
+def load_tiff(file, correct_offset=False, subtract_min=False):
 
     # load data
     img = imread(file)
@@ -43,6 +43,11 @@ def load_tiff(file, correct_offset=False):
         img[:, 0] -= offsets[0]
         img[:, 1] -= offsets[1]
         print(f'INFO added offsets: {offsets[0]} (channel 1) | {offsets[1]} (channel 2)')
+
+    # assure that all intensities are positive
+    if subtract_min:
+        img[:, 0] -= img[:, 0]
+        img[:, 1] -= img[:, 1]
 
     return img
 
