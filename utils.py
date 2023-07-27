@@ -46,8 +46,11 @@ def load_tiff(file, correct_offset=False, subtract_min=False):
 
     # assure that all intensities are positive
     if subtract_min:
-        img[:, 0] -= img[:, 0]
-        img[:, 1] -= img[:, 1]
+        min1, min2 = img[:, 0].min(), img[:, 1].min()
+        img[:, 0] -= min1
+        img[:, 1] -= min2
+        print(f'INFO subtracted minimum value: {min1} (channel 1) | {min2} (channel 2)')
+
 
     return img
 
