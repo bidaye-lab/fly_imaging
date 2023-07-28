@@ -76,14 +76,19 @@ def write_tif(file, arr):
     print(f'INFO writing images to {file}')
     imwrite(file, arr, photometric='minisblack')
 
-def fname(root_file, new_ending):
+def fname(root_file, new_ending, new_root=''):
+
 
     # helper function: file name in parent directory
-
     f = Path(root_file)
     n = str(new_ending)
 
     fn  = f.parent / '{}_{}'.format(f.with_suffix('').name, n)
+
+    if new_root:
+        new_root = Path(new_root)
+        fn = new_root / fn.relative_to(new_root.parent)
+        fn.parent.mkdir(exist_ok=True, parents=True)
 
     return fn
 
@@ -261,31 +266,33 @@ def draw_rois(img, rois):
 
     return img
 
-def get_mean_trace(rois, arr, subtract_background=False, dff=False, sigma=0):
+
+def get_mean_trace(rois, arr):
 
     # array with shape: (n_rois, n_samples)
     arr_m = np.zeros((len(rois), len(arr)))
 
     for i, r in enumerate(rois):
         arr_m[i] = np.mean(arr[:, r], axis=1)
-    
-    # check that arguments are valid
-    if subtract_background and dff:
-        raise ValueError('Choose either `subtract_background` or `dff`')
-    
-    # subtract last ROI
-    if subtract_background:
-        r = arr_m[:-1]
-        b = gaussian_filter(arr_m[-1], sigma)
-        arr_m = r - b
-    
-    # calculate df/f
-    if dff:
-        f = arr_m
-        f0 = percentile_filter(f, percentile=10, size=(1, 50))
-        arr_m = (f - f0) / f0
 
     return arr_m
+
+def subtract_background(arr):
+
+    a = arr[:-1] # all but last ROI
+    b = arr[-1] # last
+    # b = gaussian_filter(arr[-1], sigma=2) # this would smooth background ROI before subtraction
+    arr = a - b # subtract last 
+
+    return arr
+
+def subtract_baseline(arr, percentile, size):
+        
+    x = arr
+    x0 = percentile_filter(x, percentile=percentile, size=(1, size))
+    dxx = (x - x0) / x
+
+    return dxx
 
 ##########
 # behavior
