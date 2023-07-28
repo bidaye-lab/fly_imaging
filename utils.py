@@ -2,7 +2,8 @@ import numpy as np
 import pandas as pd
 
 
-from scipy.ndimage import gaussian_filter
+from scipy.ndimage import gaussian_filter, percentile_filter
+
 from tifffile import imwrite, imread, TiffFile
 from pystackreg import StackReg
 from read_roi import read_roi_zip
@@ -260,7 +261,7 @@ def draw_rois(img, rois):
 
     return img
 
-def get_mean_trace(rois, arr, subtract_background=False, sigma=0):
+def get_mean_trace(rois, arr, subtract_background=False, dff=False, sigma=0):
 
     # array with shape: (n_rois, n_samples)
     arr_m = np.zeros((len(rois), len(arr)))
@@ -268,11 +269,21 @@ def get_mean_trace(rois, arr, subtract_background=False, sigma=0):
     for i, r in enumerate(rois):
         arr_m[i] = np.mean(arr[:, r], axis=1)
     
+    # check that arguments are valid
+    if subtract_background and dff:
+        raise ValueError('Choose either `subtract_background` or `dff`')
+    
     # subtract last ROI
     if subtract_background:
         r = arr_m[:-1]
         b = gaussian_filter(arr_m[-1], sigma)
         arr_m = r - b
+    
+    # calculate df/f
+    if dff:
+        f = arr_m
+        f0 = percentile_filter(f, percentile=10, size=(1, 50))
+        arr_m = (f - f0) / f0
 
     return arr_m
 
