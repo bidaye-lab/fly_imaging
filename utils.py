@@ -296,7 +296,7 @@ def subtract_baseline(arr, percentile, size):
 
 ##########
 # behavior
-def load_behavior(p_mat, beh_keys=['pushing', 'hindLegRub', 'frontLegRub', 'headGrooming', 'abdomenGrooming', 'ObL1+R1', 'PER', 'midLeft+hindLegRub', 'midRight+hindLegRub']):
+def load_behavior(p_mat, beh_keys):
 
     m = loadmat(p_mat, squeeze_me=True, struct_as_record=False)
 
