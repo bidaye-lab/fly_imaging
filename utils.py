@@ -390,7 +390,7 @@ def ca_kernel(tau_on, tau_off, f):
     y = ca_trace(x, tau_on, tau_off)
 
     i_max = np.argmax(y)
-    y = np.pad(y, pad_width=(len(y) - i_max, 0))
+    y = np.pad(y, pad_width=(len(y) - 2 * i_max, 0))
 
     y = y / y.sum()
 
