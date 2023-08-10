@@ -558,9 +558,13 @@ def save_img(file, img):
     print(f'INFO saving normalized image to {file}')
     img.save(file)
 
-def align2events(df, beh, f, dt):
+def align2events(df, beh, f, dt, use_z_roi=True):
 
-    cols_roi = [ c for c in df.columns if c.startswith('z_roi_') ]
+    if use_z_roi:
+        cols_roi = [ c for c in df.columns if c.startswith('z_roi_') ]
+    else:
+        cols_roi = [ c for c in df.columns if c.startswith('roi_') ]
+
     cols_ball = [ c for c in df.columns if c.startswith('ball_') ]
     cols = cols_roi + cols_ball
     
@@ -603,7 +607,7 @@ def align2events(df, beh, f, dt):
 
     return data
 
-def plot_aligned(df_al, path=''):
+def plot_aligned(df_al, ylims_roi=(None, None), ylims_ball=(None, None), path=''):
 
     fig, axarr = plt.subplots(nrows=2, figsize=(10, 10))
 
@@ -613,6 +617,8 @@ def plot_aligned(df_al, path=''):
     ax.axvline(0, ls=':', lw=.5, c='gray')
     sns.lineplot(ax=ax, data=df, x='t', y='y', hue='match', errorbar='se', palette='muted')
     ax.margins(x=0)
+    ax.set_ylim(ylims_roi)
+
 
     ax.set_xlabel('time [s]')
     ax.set_ylabel('average zscored intensity')
@@ -637,6 +643,7 @@ def plot_aligned(df_al, path=''):
 
     ax.set_xlabel('time [s]')
     ax.set_ylabel('average ball velocity')
+    ax.set_ylim(ylims_ball)
 
     fig.tight_layout()
     if path:
