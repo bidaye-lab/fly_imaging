@@ -776,8 +776,9 @@ def plot_corrmap(arr1, arr2, df, b, f_ca, f_beh, cmap='bwr', path=''):
         img2 = np.load(npy2)
 
     else:
-        img1 = np.apply_along_axis(fun, 0, arr1, y)
-        img2 = np.apply_along_axis(fun, 0, arr2, y)
+        with np.errstate(divide='ignore', invalid='ignore'): # ignore division by 0 warning
+            img1 = np.apply_along_axis(fun, 0, arr1, y)
+            img2 = np.apply_along_axis(fun, 0, arr2, y)
         
         np.save(npy1, img1)
         np.save(npy2, img2)
