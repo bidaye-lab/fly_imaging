@@ -1,3 +1,6 @@
+!!! Work in progress !!!
+Code in this repos is currently being reorganized
+
 # Analysis of Ca imaging
 - register TIF stacks
 - extract ROI traces
