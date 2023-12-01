@@ -12,3 +12,4 @@ Code in this repos is currently being reorganized
 2. open anaconda terminal, change directory to this folder
 3. call `conda create env -f environment.yml`
 4. run `jupter-lab` and open notebook
+Test
