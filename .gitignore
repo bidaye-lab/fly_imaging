@@ -1,0 +1,6 @@
+*.egg-info
+__pycache__
+notebooks
+.vscode/*
+
+!.vscode/settings.json
