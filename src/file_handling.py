@@ -175,7 +175,7 @@ def get_roi_zip_file(p_tif):
 
 
 def get_matlab_files(p_tif):
-    '''Search for ball and behavior file in parent directory
+    """Search for ball and behavior file in parent directory
 
     Looks for the ball velocity file by taking the first part before
     `_` of the `p_tif` basename and appending `.mat`.
@@ -192,7 +192,7 @@ def get_matlab_files(p_tif):
     -------
     p_ball, p_beh : (Path, Path) or None
         If both files found, return tuple of Path to them, otherwise return None
-    '''
+    """
     p_ball = p_tif.parent / (p_tif.name.split("_")[0] + ".mat")
     if not p_ball.is_file():
         print("WARNING ball velocity matlab file not found")
@@ -215,12 +215,12 @@ def get_matlab_files(p_tif):
 
 
 def load_behavior(p_mat, beh_keys):
-    '''Load arrays with behavior from matlab file
+    """Load arrays with behavior from matlab file
 
     Parameters
     ----------
     p_mat : pathlike
-        Path to matlab behavior file 
+        Path to matlab behavior file
     beh_keys : list of str
         Behavior keys to look for in `p_mat`
 
@@ -228,7 +228,7 @@ def load_behavior(p_mat, beh_keys):
     -------
     beh : dict
         Mapping between behavior key and data array
-    '''
+    """
     m = loadmat(p_mat, squeeze_me=True, struct_as_record=False)
 
     beh = {k: v for k, v in zip(m["behs"], m["bouts"]) if k in beh_keys}
@@ -237,7 +237,7 @@ def load_behavior(p_mat, beh_keys):
 
 
 def load_ball(p_mat):
-    '''Load ball velocity data
+    """Load ball velocity data
 
     Parameters
     ----------
@@ -248,7 +248,7 @@ def load_ball(p_mat):
     -------
     ball : np.array
         Ball velocity data in x, y, and z
-    '''
+    """
     m = loadmat(p_mat, squeeze_me=True, struct_as_record=False)
 
     ball = vars(m["sensorData"])["bufferRotations"]
