@@ -6,8 +6,6 @@ from src.file_handling import (
     fname,
     load_tiff,
     write_tiff,
-    save_img,
-    save_dual_movie,
     get_roi_zip_file,
     get_matlab_files,
     load_ball,
@@ -32,14 +30,23 @@ from src.roi import (
     subtract_background,
 )
 
-from src.visualization import plot_data, plot_corr_heatmap, plot_ccf
+from src.visualization import (
+    plot_data,
+    plot_corr_heatmap,
+    plot_ccf,
+    save_img,
+    save_dual_movie,
+)
 
 
-def motion_correction(params):
+def motion_correction_based_on_ch2(params):
     # load parameters
     p_tifs = params["p_tifs"]
     p_out = params["p_out"]
     overwrite = params["overwrite"]
+    n_ch = params['n_ch']
+    n_z = params['n_z']
+    
     xy_smth = params["xy_smth"]
     reg = params["reg"]
 
@@ -58,7 +65,7 @@ def motion_correction(params):
 
         # load and split
         stack = load_tiff(p_tif)
-        ch1, ch2 = split_channels(stack, n_z=15, n_ch=2)
+        ch1, ch2 = split_channels(stack, n_z=n_z, n_ch=n_ch)
         ch1 = maxproj_z(ch1)
         ch2 = maxproj_z(ch2)
 
@@ -89,7 +96,7 @@ def motion_correction(params):
         save_dual_movie(p_plot / "ch2reg.mp4", ch2, ch2_a)
 
 
-def extract_trace(params):
+def extract_traces(params):
     # load parameters
     p_tifs = params["p_tifs"]
     p_out = params["p_out"]

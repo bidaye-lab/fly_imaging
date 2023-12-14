@@ -21,8 +21,7 @@
 from pathlib import Path
 from pystackreg import StackReg
 
-from scripts.batch_processing import motion_correction, extract_traces, merge_imaging_and_behavior, merge_sessions
-
+from scripts.batch_processing import motion_correction_based_on_ch2, extract_traces, merge_imaging_and_behavior, merge_sessions
 from scripts.batch_analysis import generate_plots, spatial_corrmaps, pooled
 
 # %% [markdown]
@@ -74,14 +73,44 @@ print("INFO: Found {} files:".format(params["p_tifs"]))
 print(params["p_tifs"])
 
 # %% [markdown]
-# # full processing pipeline
+# # Processing
+# The processing part contains
+# - motion correction
+# - fluorescence trace extraction
+# - merging behavior and imaging data
+
+# %% [markdown]
+# ## Motion correction
+# The motion correction is done with [pystackreg](https://pystackreg.readthedocs.io/en/latest/readme.html#summary), which is a python port of the TurboReg/StackReg extension in ImageJ.
+#
+# The processing steps are
+# - maximum projection along z
+# - smoothing with 2D Gaussian along xy (`params['xy_smth']`)
+# - alignment based on channel 2 (`params['reg']`)
+#
+# Following files are generated for each TIF file, split by channel:
+# - uncorrected maxproj data (`*ch1.tif` and `ch2.tif`)
+# - motion-corrected maxproj data (`*ch1reg.tif` and `ch2reg.tif`)
+# - mean maxproj image (`*ch1mean.bpm` and `*ch2mean.bpm`)
+# - side-by-side movies (quick quality control)
+#     - maxproj channel 1 and 2 (`*ch1ch2.mp4`)
+#     - uncorrected and motion-corrected maxproj channel 1 (`*ch1reg.mp4`)
+#     - uncorrected and motion-corrected maxproj channel 2 (`*ch2reg.mp4`)
+#
+#
+# For more details, look into the `scripts.batch_processing.motion_correction` function.
+#
+#
 
 # %%
-# step 1
-motion_correction(params)
+motion_correction_based_on_ch2(params)
+
+# %% [markdown]
+# ## Trace extraction
+#
 
 # %%
-# step 2
+
 extract_traces(params)
 
 # %%
