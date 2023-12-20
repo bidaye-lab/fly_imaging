@@ -36,7 +36,7 @@ def generate_plots(params):
         # optional: remove ROI 7, 8, 9
         df = df.drop(columns=["z_roi_7", "z_roi_8", "z_roi_9"])
 
-        # pearson correlation heatmap (selection of columns: see utl.calculate_pearson)
+        # pearson correlation heatmap (selection of columns: see src.processing.calculate_pearson)
         plot_corr_heatmap(df, beh="behi", path=p_plot / "heatmap.svg")
 
         # pearson heatmaps around behavior events

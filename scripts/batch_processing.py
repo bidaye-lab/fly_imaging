@@ -17,7 +17,7 @@ from src.processing import (
     maxproj_z,
     smooth_xy,
     zscore_cols,
-    upsample_to_behavior,
+    resample_to_behavior,
     convolute_ca_kernel,
 )
 
@@ -133,7 +133,7 @@ def extract_traces(params):
 
         # load ROIs
         img = np.mean(ch1_a, axis=0)
-        rois = read_imagej_rois(p_zip, img)
+        rois = read_imagej_rois(p_zip, img.shape[-2:])
         img_rois = draw_rois(img, rois)
         save_img(p_plot / "ch1mean_rois.bmp", img_rois)
 
@@ -215,7 +215,7 @@ def merge_imaging_and_behavior(params):
                 continue
 
             # match sample rates
-            df = upsample_to_behavior(traces, beh, ball, f_ca, f_ball, f_beh)
+            df = resample_to_behavior(traces, beh, ball, f_ca, f_ball, f_beh)
             # zscore ROIs
             df = zscore_cols(df, col_start="roi_")
             # convolute ball velocities and behavior with Ca kernel
