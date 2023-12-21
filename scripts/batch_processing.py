@@ -44,6 +44,7 @@ def motion_correction_based_on_ch2(params):
 
     # load parameters
     p_tifs = params["p_tifs"]
+    p_parent = params["parent_dir"]
     p_out = params["p_out"]
     overwrite = params["overwrite"]
     n_ch = params['n_ch']
@@ -55,10 +56,10 @@ def motion_correction_based_on_ch2(params):
         print()
 
         # define folder for plots
-        p_plot = fname(p_tif, "", new_root=p_out).parent / "plots"
+        p_plot = fname(p_tif, "", old_root=p_parent, new_root=p_out).parent / "plots"
         p_plot.mkdir(exist_ok=True)
 
-        if fname(p_tif, "ch1.tif", new_root=p_out).is_file() and not overwrite:
+        if fname(p_tif, "ch1.tif", old_root=p_parent, new_root=p_out).is_file() and not overwrite:
             print(f"INFO output file exists, skipping registration for {p_tif.parent}")
             continue
         else:
@@ -84,11 +85,11 @@ def motion_correction_based_on_ch2(params):
         ch2_am = np.mean(ch2_a, axis=0)
 
         # save original and motion corrected data by channel
-        write_tiff(fname(p_tif, "ch1.tif", new_root=p_out), ch1_a.astype("int16"))
-        write_tiff(fname(p_tif, "ch2.tif", new_root=p_out), ch2_a.astype("int16"))
+        write_tiff(fname(p_tif, "ch1.tif", old_root=p_parent, new_root=p_out), ch1_a.astype("int16"))
+        write_tiff(fname(p_tif, "ch2.tif", old_root=p_parent, new_root=p_out), ch2_a.astype("int16"))
 
-        write_tiff(fname(p_tif, "ch1reg.tif", new_root=p_out), ch1_a.astype("int16"))
-        write_tiff(fname(p_tif, "ch2reg.tif", new_root=p_out), ch2_a.astype("int16"))
+        write_tiff(fname(p_tif, "ch1reg.tif", old_root=p_parent, new_root=p_out), ch1_a.astype("int16"))
+        write_tiff(fname(p_tif, "ch2reg.tif", old_root=p_parent, new_root=p_out), ch2_a.astype("int16"))
 
         # save quality control images and movies
         save_img(p_plot / "ch1mean.bmp", ch1_am)
@@ -105,6 +106,7 @@ def extract_traces(params):
     # load parameters
     p_tifs = params["p_tifs"]
     p_out = params["p_out"]
+    p_parent = params["parent_dir"]
     overwrite = params["overwrite"]
     perc = params["perc"]
     winsize = params["winsize"]
@@ -113,11 +115,11 @@ def extract_traces(params):
         print()
 
         # define folder for plots
-        p_plot = fname(p_tif, "", new_root=p_out).parent / "plots"
+        p_plot = fname(p_tif, "", old_root=p_parent, new_root=p_out).parent / "plots"
         p_plot.mkdir(exist_ok=True)
 
         # check if ROI traces have already been extracted
-        p_roi = fname(p_tif, "roi_traces.pickle", new_root=p_out)
+        p_roi = fname(p_tif, "roi_traces.pickle", old_root=p_parent, new_root=p_out)
         if p_roi.is_file() and not overwrite:
             print(
                 f"INFO output files exists, skipping ROI extraction for {p_tif.parent}"
@@ -125,8 +127,8 @@ def extract_traces(params):
             continue
 
         # load motion-corrected data
-        ch1_a = load_tiff(fname(p_tif, "ch1reg.tif", new_root=p_out))
-        ch2_a = load_tiff(fname(p_tif, "ch2reg.tif", new_root=p_out))
+        ch1_a = load_tiff(fname(p_tif, "ch1reg.tif", old_root=p_parent, new_root=p_out))
+        ch2_a = load_tiff(fname(p_tif, "ch2reg.tif", old_root=p_parent, new_root=p_out))
 
 
         # load ROIs from Roi.zip
@@ -187,6 +189,7 @@ def merge_imaging_and_behavior(params):
     # load parameters
     p_tifs = params["p_tifs"]
     p_out = params["p_out"]
+    p_parent = params["parent_dir"]
     overwrite = params["overwrite"]
     beh_keys = params["beh_keys"]
     f_ca, f_ball, f_beh = params["f_ca"], params["f_ball"], params["f_beh"]
@@ -195,11 +198,11 @@ def merge_imaging_and_behavior(params):
         print()
 
         # define folder for plots
-        p_plot = fname(p_tif, "", new_root=p_out).parent / "plots"
+        p_plot = fname(p_tif, "", old_root=p_parent, new_root=p_out).parent / "plots"
         p_plot.mkdir(exist_ok=True)
 
         # load ROI traces from disk
-        p_roi = fname(p_tif, "roi_traces.pickle", new_root=p_out)
+        p_roi = fname(p_tif, "roi_traces.pickle", old_root=p_parent, new_root=p_out)
         if not p_roi.is_file():
             print(f"WARNING file with ROI traces not found, skipping {p_tif.parent}")
             continue
@@ -219,7 +222,7 @@ def merge_imaging_and_behavior(params):
 
         for method, traces in d_roi.items():
             # check if already been processed
-            p_df = fname(p_tif, f"data_{method}.parquet", new_root=p_out)
+            p_df = fname(p_tif, f"data_{method}.parquet", old_root=p_parent, new_root=p_out)
             if p_df.is_file() and not overwrite:
                 print(
                     f"INFO output files exists, skipping data merging for method {method} in {p_tif.parent}"
@@ -266,20 +269,21 @@ def merge_sessions(params):
     # load parameters
     p_tifs = params["p_tifs"]
     p_out = params["p_out"]
+    p_parent = params["parent_dir"]
     p_out_all = params["p_out_all"]
     overwrite = params["overwrite"]
 
     # get methods used for trace extraction
     all_pars = []
     for p in p_tifs:
-        l = [*fname(p, "", new_root=p_out).parent.glob("*data_*.parquet")]
+        l = [*fname(p, "", old_root=p_parent, new_root=p_out).parent.glob("*data_*.parquet")]
         all_pars.extend(l)
     methods = {p.stem.split("_")[-1] for p in all_pars}
 
     # merge for each method separately
     for method in methods:
         # list of all *_data_{method}.parquet files
-        p_pars = [fname(p, f"data_{method}.parquet", new_root=p_out) for p in p_tifs]
+        p_pars = [fname(p, f"data_{method}.parquet", old_root=p_parent, new_root=p_out) for p in p_tifs]
 
         l = []
         for p_par in p_pars:

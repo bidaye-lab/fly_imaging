@@ -69,7 +69,7 @@ def maxproj_z(arr):
 
     # collapse z: max procection
     arr_z = np.max(arr, axis=1)
-    print(f'INFO max proj along z dim: shape {arr.shape}')
+    print(f'INFO max proj along z dim: shape {arr_z.shape}')
     
     return arr_z
 

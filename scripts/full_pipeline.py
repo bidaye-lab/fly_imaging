@@ -64,14 +64,15 @@ params["p_tifs"] = [
 ]
 
 # set and create output folders
-params["p_out"] = params["parent_dir"] / "smth4_perc10_winsize50"
+params["p_out"] = Path(r'C:\temp\imaging_pipeline\test_run')
 params["p_out_all"] = params["p_out"] / "all_data"
-params["p_out_all"].mkdir(exist_ok=True, exists_ok=True)
+params["p_out_all"].mkdir(exist_ok=True, parents=True)
 
 # print info
 print("INFO: Saving files to {}".format(params["p_out"]))
-print("INFO: Found {} files:".format(params["p_tifs"]))
-print(params["p_tifs"])
+print("INFO: Found {} files:".format(len(params["p_tifs"])))
+for p in params["p_tifs"]:
+    print(p)
 
 # %% [markdown]
 # # Processing

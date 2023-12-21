@@ -5,33 +5,36 @@ from tifffile import imwrite, imread, TiffFile
 from scipy.io import loadmat
 
 
-def fname(root_file, new_ending, new_root=""):
+def fname(old_file, new_ending, old_root="", new_root=""):
     """Helper function to generate path for output files
 
-    This will strip the suffix from `root_file` and attach a new
+    This will strip the suffix from `old_file` and attach a new
     file ending to it.
 
     Examples
     -------
     Without `new_root`
-    >>> fname(root_file='data/subfolder/image.tif', new_ending='mean_ch1.png')
+    >>> fname(old_file='data/subfolder/image.tif', new_ending='mean_ch1.png')
     >>> 'data/subfolder/image_mean_ch1.png'
 
-    With `new_root`
-    >>> fname(root_file='data/subfolder/image.tif', new_ending='mean_ch1.png', new_root='data/output')
-    >>> 'data/output/subfolder/image_mean_ch1.png'
+    With `old_root` and `new_root`
+    >>> fname(old_file='data/subfolder/image.tif', new_ending='mean_ch1.png', old_root='data/' new_root='output/')
+    >>> 'output/subfolder/image_mean_ch1.png'
 
 
     Parameters
     ----------
-    root_file : pathlike
+    old_file : pathlike
         Path to original file (e.g. original TIF data file)
     new_ending : str
         New ending to be placed after suffix is removed
+    old_root : str, pathlike
+        If not '', place output file in subfolders in `new_root`
+        relative to `old_file.parent`. By default ''.
     new_root : str, pathlike
         If not '', place output file in subfolders in `new_root`
-        relative to `root_file.parent`. If '', place in folder of
-        `root_file`. By default ''
+        relative to `old_file.parent`. If '', place in folder of
+        `old_file`. By default ''
 
     Returns
     -------
@@ -39,16 +42,17 @@ def fname(root_file, new_ending, new_root=""):
         Path to the output file
     """
 
-    root_file = Path(root_file)  # ensure that Path
-
-    new_file = root_file.parent / "{}_{}".format(
-        root_file.with_suffix("").name, new_ending
-    )
+    old_file = Path(old_file)  # ensure that Path
+    old_file_basename = old_file.with_suffix("").name
+    new_file_name = "{}_{}".format(old_file_basename, new_ending)
 
     if new_root:
         new_root = Path(new_root)
-        new_file = new_root / new_file.relative_to(new_root.parent)
-        new_file.parent.mkdir(exist_ok=True, parents=True)
+        new_folder = new_root / old_file.relative_to(old_root).parent
+        new_folder.mkdir(exist_ok=True, parents=True)
+        new_file = new_folder / new_file_name
+    else:
+        new_file = old_file.parent / new_file_name
 
     return new_file
 
