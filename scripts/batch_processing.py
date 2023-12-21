@@ -40,20 +40,21 @@ from src.visualization import (
 
 
 def motion_correction_based_on_ch2(params):
+    "Run motion correction pipeline"
+
     # load parameters
     p_tifs = params["p_tifs"]
     p_out = params["p_out"]
     overwrite = params["overwrite"]
     n_ch = params['n_ch']
     n_z = params['n_z']
-    
     xy_smth = params["xy_smth"]
     reg = params["reg"]
 
     for p_tif in p_tifs:
         print()
 
-        # define plot folder
+        # define folder for plots
         p_plot = fname(p_tif, "", new_root=p_out).parent / "plots"
         p_plot.mkdir(exist_ok=True)
 
@@ -63,31 +64,33 @@ def motion_correction_based_on_ch2(params):
         else:
             print(f"INFO now registering {p_tif}")
 
-        # load and split
+        # load data, split channels, max project along z stack
         stack = load_tiff(p_tif)
         ch1, ch2 = split_channels(stack, n_z=n_z, n_ch=n_ch)
         ch1 = maxproj_z(ch1)
         ch2 = maxproj_z(ch2)
 
+        # spatial smoothing
         ch1 = smooth_xy(ch1, xy_smth)
         ch2 = smooth_xy(ch2, xy_smth)
 
-        # register
+        # motion correction based on channel 2
         tmats = get_tmats(ch2, reg)
         ch1_a = align(ch1, tmats, reg)
         ch2_a = align(ch2, tmats, reg)
 
-        # mean image
+        # calculate mean image
         ch1_am = np.mean(ch1_a, axis=0)
         ch2_am = np.mean(ch2_a, axis=0)
 
-        # save to disk
+        # save original and motion corrected data by channel
         write_tiff(fname(p_tif, "ch1.tif", new_root=p_out), ch1_a.astype("int16"))
         write_tiff(fname(p_tif, "ch2.tif", new_root=p_out), ch2_a.astype("int16"))
 
         write_tiff(fname(p_tif, "ch1reg.tif", new_root=p_out), ch1_a.astype("int16"))
         write_tiff(fname(p_tif, "ch2reg.tif", new_root=p_out), ch2_a.astype("int16"))
 
+        # save quality control images and movies
         save_img(p_plot / "ch1mean.bmp", ch1_am)
         save_img(p_plot / "ch2mean.bmp", ch2_am)
 
@@ -97,6 +100,8 @@ def motion_correction_based_on_ch2(params):
 
 
 def extract_traces(params):
+    'Extract fluorescence traces for ROIs from both channels'
+
     # load parameters
     p_tifs = params["p_tifs"]
     p_out = params["p_out"]
@@ -107,7 +112,7 @@ def extract_traces(params):
     for p_tif in p_tifs:
         print()
 
-        # define plot folder
+        # define folder for plots
         p_plot = fname(p_tif, "", new_root=p_out).parent / "plots"
         p_plot.mkdir(exist_ok=True)
 
@@ -119,34 +124,42 @@ def extract_traces(params):
             )
             continue
 
-        # load Roi.zip
+        # load motion-corrected data
+        ch1_a = load_tiff(fname(p_tif, "ch1reg.tif", new_root=p_out))
+        ch2_a = load_tiff(fname(p_tif, "ch2reg.tif", new_root=p_out))
+
+
+        # load ROIs from Roi.zip
         p_zip = get_roi_zip_file(p_tif)
         if not p_zip:
             print(f"WARNING Skipping {p_tif.parent}")
             continue
         else:
             print(f"INFO loading ROIs from {p_zip}")
-
-        # load aligned data
-        ch1_a = load_tiff(fname(p_tif, "ch1reg.tif", new_root=p_out))
-        ch2_a = load_tiff(fname(p_tif, "ch2reg.tif", new_root=p_out))
-
-        # load ROIs
+        
+        # write ROIs on mean image
         img = np.mean(ch1_a, axis=0)
         rois = read_imagej_rois(p_zip, img.shape[-2:])
         img_rois = draw_rois(img, rois)
         save_img(p_plot / "ch1mean_rois.bmp", img_rois)
 
-        # extract traces
-        d_roi = dict()  # collect traces extracted with different methods here
-
+        # extract traces with different methods
+        # - ch1raw/ch2raw: raw data
+        # - r12: ratio of ch1 to ch2
+        # - dch1/dch2: baseline subtracted from raw data
+        # - dr12: baseline subtracted from ratio
+        # - ch1/ch2: background ROI subtracted from raw data
+        
+        d_roi = dict()  # dictionary to map method to traces
         ca1 = get_mean_trace(rois, ch1_a)
         ca2 = get_mean_trace(rois, ch2_a)
-        d_roi["ch1raw"] = ca1
+        
+        # raw data
+        d_roi["ch1raw"] = ca1 
         d_roi["ch2raw"] = ca2
-
+        
         # channel 1 to 2 ratio
-        r12 = ca1 / ca2
+        r12 = ca1 / ca2 
         d_roi["r12"] = r12
 
         # subtract baseline
@@ -170,22 +183,22 @@ def extract_traces(params):
 
 
 def merge_imaging_and_behavior(params):
+
     # load parameters
     p_tifs = params["p_tifs"]
     p_out = params["p_out"]
     overwrite = params["overwrite"]
-
     beh_keys = params["beh_keys"]
     f_ca, f_ball, f_beh = params["f_ca"], params["f_ball"], params["f_beh"]
 
     for p_tif in p_tifs:
         print()
 
-        # define plot folder
+        # define folder for plots
         p_plot = fname(p_tif, "", new_root=p_out).parent / "plots"
         p_plot.mkdir(exist_ok=True)
 
-        # load ROI traces
+        # load ROI traces from disk
         p_roi = fname(p_tif, "roi_traces.pickle", new_root=p_out)
         if not p_roi.is_file():
             print(f"WARNING file with ROI traces not found, skipping {p_tif.parent}")
@@ -201,7 +214,6 @@ def merge_imaging_and_behavior(params):
             continue
         else:
             p_ball, p_beh = p_mats
-
         ball = load_ball(p_ball)
         beh = load_behavior(p_beh, beh_keys)
 
@@ -249,18 +261,22 @@ def merge_imaging_and_behavior(params):
 
 
 def merge_sessions(params):
+    "Merge data from all TIF files"
+
     # load parameters
     p_tifs = params["p_tifs"]
     p_out = params["p_out"]
+    p_out_all = params["p_out_all"]
     overwrite = params["overwrite"]
 
-    # get methods
+    # get methods used for trace extraction
     all_pars = []
     for p in p_tifs:
         l = [*fname(p, "", new_root=p_out).parent.glob("*data_*.parquet")]
         all_pars.extend(l)
     methods = {p.stem.split("_")[-1] for p in all_pars}
 
+    # merge for each method separately
     for method in methods:
         # list of all *_data_{method}.parquet files
         p_pars = [fname(p, f"data_{method}.parquet", new_root=p_out) for p in p_tifs]
@@ -278,7 +294,7 @@ def merge_sessions(params):
         if l:
             # combine dataframes and save
             df = pd.concat(l, ignore_index=True)
-            p_df = p_out / f"all_data_{method}.parquet"
+            p_df = p_out_all / f"all_data_{method}.parquet"
             if overwrite:
                 df.to_parquet(p_df)
 

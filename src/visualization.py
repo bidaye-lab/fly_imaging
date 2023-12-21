@@ -17,6 +17,24 @@ from src.processing import calculate_pearson, calculate_ccf, resample
 # visualization
 
 def save_dual_movie(file, arr1, arr2, cmap='viridis', fps=30):
+    '''Save arr1 and arr2 as side-by-side video.
+
+    arr1 and arr2 are concatenated along the x-axis and therefore
+    have to have the same height.
+
+    Parameters
+    ----------
+    file : path-like
+        Path to save file
+    arr1 : numpy.ndarray
+        Left 3D array of shape (n_frames, width, height)
+    arr2 : numpy.ndarray
+        Right 3D array of shape (n_frames, width, height)
+    cmap : str, optional
+        matplotlib colormap to use, by default 'viridis'
+    fps : float, optional
+        Frames rate for the movie, by default 30
+    '''
 
     arr = np.concatenate([arr1, arr2], axis=-1) # along x dim
 
@@ -28,6 +46,18 @@ def save_dual_movie(file, arr1, arr2, cmap='viridis', fps=30):
 
 
 def save_img(file, img):
+    '''Save image to file
+
+    Normalize data range to [0...255] and save as
+    uint8 image file.
+
+    Parameters
+    ----------
+    file : path-like
+        Path to file on disk
+    img : numpy.ndarray
+        Image to be saved
+    '''
 
     img = img.astype('float')
     img -= img.min()

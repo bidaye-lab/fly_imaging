@@ -63,9 +63,10 @@ params["p_tifs"] = [
     *params["parent_dir"].glob("**/trials_to_register/*/trial*_00???.tif")
 ]
 
-# set and create output folder
+# set and create output folders
 params["p_out"] = params["parent_dir"] / "smth4_perc10_winsize50"
-params["p_out"].mkdir(exist_ok=True)
+params["p_out_all"] = params["p_out"] / "all_data"
+params["p_out_all"].mkdir(exist_ok=True, exists_ok=True)
 
 # print info
 print("INFO: Saving files to {}".format(params["p_out"]))
@@ -78,6 +79,14 @@ print(params["p_tifs"])
 # - motion correction
 # - fluorescence trace extraction
 # - merging behavior and imaging data
+#
+# All output is stored in the `params["p_out"]` folder.
+# Here, the folder structure of all `params["p_tifs"]` files is regenerated relative to `params["parent_dir"]`.
+# These folders contain all intermediate files of the processing pipeline, 
+# as well as a `plots` folder with analysis for that specific TIF file.
+#
+# The output folder further contains an `all_data` folder,
+# which contains analysis pooled over all TIF files.
 
 # %% [markdown]
 # ## Motion correction
@@ -107,18 +116,41 @@ motion_correction_based_on_ch2(params)
 
 # %% [markdown]
 # ## Trace extraction
+# This part loads the motion-corrected TIF files saved to disk
+# and extracts the fluorescence traces for ROIs defined in the ImageJ Roi.zip file.
+#
+# Check `ch1mean_rois.bmp` if ROIs are parsed correctly.
+#
+# Following files are generated for each TIF file, split by channel.
+# The name indicates for which data the trace was extracted:
+# - `ch1raw/ch2raw`: raw data
+# - `r12`: ratio of ch1 to ch2
+# - `dch1/dch2`: baseline subtracted from raw data
+# - `dr12`: baseline subtracted from ratio
+# - `ch1/ch2`: background (last) ROI subtracted from raw data
 #
 
 # %%
-
 extract_traces(params)
 
-# %%
-# step 3
-merge_imaging_and_behavior(params)
+# %% [markdown]
+# ## Merge imaging and behavior data
+# Imaging data, behavior data, and ball velocity data is recorded at different sampling rates.
+# Here, they are resampled to the sampling rate of the behavior data and merged into one pandas.DataFrame.
+#
+# The ball velocity file is expected to be called `trial16.mat` for the TIF file `trial16_00001.tif`.
+#
+# The behavior data file is expteced to be called `*-actions.mat`
 
 # %%
-# step 4
+merge_imaging_and_behavior(params)
+
+# %% [markdown]
+# As a final processing step,
+# the data from all TIF files is merged into one pandas.DataFrame and 
+# saved to `params["all_data"] / all_data_{method}.parquet` (see _Trace extraction_).
+
+# %%
 merge_sessions(params)
 
 # %% [markdown]
