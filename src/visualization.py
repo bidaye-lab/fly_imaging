@@ -71,6 +71,7 @@ def save_img(file, img):
 
 
 def plot_aligned(df_al, ylims_roi=(None, None), ylims_ball=(None, None), path=''):
+    "Plot averaged data after alignment to behavior event"
 
     fig, axarr = plt.subplots(nrows=2, figsize=(10, 10))
 
@@ -185,6 +186,7 @@ def plot_data(df, f, zroi=True, path=''):
 
 
 def plot_corr_heatmap(df, beh, path=''):
+    "Calculate and plot correlation heatmap for all ROIs, ball velocity, and behavior events"
 
     d = calculate_pearson(df, beh)
 
@@ -198,6 +200,7 @@ def plot_corr_heatmap(df, beh, path=''):
         plt.close(fig)
 
 def plot_ccf(df, f, col1='z_roi_', col2='z_conv_ball_', col2_='conv_behi_', pool_fly=True, path=''):
+    "Calculate and lot cross-correlation functions between (i) `col1` and (ii) `col2` + `col2_`"
 
     d = calculate_ccf(df, dt=2, f=f, col1=col1, col2=col2, col2_=col2_)
     d = d.dropna(axis=0)
@@ -223,6 +226,7 @@ def plot_ccf(df, f, col1='z_roi_', col2='z_conv_ball_', col2_='conv_behi_', pool
         plt.close(fig)
 
 def plot_corrmap(arr1, arr2, df, b, f_ca, f_beh, cmap='bwr', path=''):
+    "Calculate and plot pixel-wise correlation maps for two channels"
     
     y = df.loc[:, b].values
 
