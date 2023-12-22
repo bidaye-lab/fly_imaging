@@ -1,19 +1,26 @@
-!!! Work in progress !!!
-Code in this repos is currently being reorganized
+Analysis of calcium imaging data recorded in the fruit fly
 
-# old scripts
-- scripts/old_notebooks/ca_imaging_stim.ipynb
-- scripts/old_notebooks/ca_imaging.ipynb
-- scripts/old_notebooks/focused_heatmaps.ipynb
-- scripts/old_notebooks/hacky_aligned_behavior.ipynb
-- scripts/old_notebooks/pretty_plot.ipynb
+# How to use this repo
+For more information on the structure of this repo, 
+see this [template repo](https://github.com/bidaye-lab/template_data_pipelines).
 
-# new scripts
-- scripts/full_pipeline.py
+## Analysis pipelines
+The script files `scripts/*.py` are workflows to analyse imaging data.
+
+|script file|use case|
+|---|---|
+|`full_pipeline.py`|start-to-finish analysis pipeline merging raw data, ImageJ ROIs, ball velocities, and behavior|
+
+## old scripts
+These old scripts need to become part of the new code structure.
+- `scripts/old_notebooks/ca_imaging_stim.ipynb`
+- ~~`scripts/old_notebooks/ca_imaging.ipynb`~~
+- `scripts/old_notebooks/focused_heatmaps.ipynb`
+- `scripts/old_notebooks/hacky_aligned_behavior.ipynb`
+- `scripts/old_notebooks/pretty_plot.ipynb`
 
 
-# Installation
-
+## Installation
 ```
 # create conda environment with necessary dependencies
 conda create -n imaging_analysis -f environment.yml
@@ -26,13 +33,3 @@ cd imaging_analysis
 pip install -e .
 ```
 
-# How to use this repo
-## Analysis pipelines
-The script files `scripts/*.py` are workflows to analyse imaging data.
-
-## Code structure
-The analysis pipelines in the `scripts/` folder
-call the code stored in the `src/` folder.
-The [installation](#installation) method makes the code in the `src/` folder
-available as a local python package.
-This setup loosely follows the [The Good Research Code Handbook](https://goodresearch.dev/s).
