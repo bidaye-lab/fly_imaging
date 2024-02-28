@@ -37,8 +37,12 @@ python src/create_notebooks.py
 ```
 
 ## Update
-```
+```bash
+# pull from github
 cd imaging_analysis
 git pull origin main
-```
 
+# recreate notebooks
+conda activate imaging_analysis
+python src/create_notebooks.py
+```
