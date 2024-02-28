@@ -31,5 +31,14 @@ git clone https://github.com/bidaye-lab/imaging_analysis
 # install code as local local python module
 cd imaging_analysis
 pip install -e .
+
+# create notebooks
+python src/create_notebooks.py
+```
+
+## Update
+```
+cd imaging_analysis
+git pull origin main
 ```
 
