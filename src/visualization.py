@@ -218,8 +218,12 @@ def plot_ccf(df, f, col1='z_roi_', col2='z_conv_ball_', col2_='conv_behi_', pool
 
     g = sns.relplot(data=d, kind='line', facet_kws={'sharey': False}, errorbar='se', **kw_args)
     g.set_axis_labels('time lag [s]', 'norm CCF')
+
+    for ax in g.axes.flatten():
+        ax.axvline(0, ls=':', lw=.5, c='gray', zorder=-1)
+        ax.margins(x=0)
     
-    fig = g.fig
+    fig = g.figure
     fig.tight_layout()
     if path:
         fig.savefig(path)
