@@ -37,6 +37,8 @@ params = {
     "f_ca": 2,  # sample rate imaging
     "f_ball": 50,  # sample rate ball velocity
     "f_beh": 200,  # sample rate behavior
+    "ca_tau_on":  0.13, # rise and decay time [s] of Ca kernel in seconds, used for covolving ball and behavior
+    "ca_tau_off": 0.63, # taken from https://elifesciences.org/articles/23496#s4
     "beh_keys": [  # keys in behavior file to consider
         "pushing",
         "hindLegRub",

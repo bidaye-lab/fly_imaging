@@ -193,6 +193,7 @@ def merge_imaging_and_behavior(params):
     overwrite = params["overwrite"]
     beh_keys = params["beh_keys"]
     f_ca, f_ball, f_beh = params["f_ca"], params["f_ball"], params["f_beh"]
+    tau_on, tau_off = params["tau_on"], params["tau_off"]
 
     for p_tif in p_tifs:
         print()
@@ -234,7 +235,7 @@ def merge_imaging_and_behavior(params):
             # zscore ROIs
             df = zscore_cols(df, col_start="roi_")
             # convolute ball velocities and behavior with Ca kernel
-            df = convolute_ca_kernel(df, f=f_beh)
+            df = convolute_ca_kernel(df, f=f_beh, tau_on=tau_on, tau_off=tau_off)
             # zscore ball velocities
             df = zscore_cols(df, col_start="conv_ball_")
 
