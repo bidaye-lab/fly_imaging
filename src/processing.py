@@ -363,14 +363,15 @@ def ca_kernel(tau_on, tau_off, f):
     ca_trace = lambda a, b, c: - np.exp(-a / b) + np.exp(-a / c)
     y = ca_trace(x, tau_on, tau_off)
 
-    i_max = np.argmax(y)
-    y = np.pad(y, pad_width=(len(y) - 2 * i_max, 0))
+    # onset aligned to center of kernel
+    y = np.pad(y, pad_width=(len(y), 0))
 
+    # normalize area under curve to 1
     y = y / y.sum()
 
     return y
 
-def convolute_ca_kernel(df, f):
+def convolute_ca_kernel(df, f, tau_on, tau_off):
     '''Convolute ball velocity and behavior data with Calcium kernel
 
     This will convolute all columns that start with `ball_` or `beh_`
@@ -382,14 +383,16 @@ def convolute_ca_kernel(df, f):
         Dataframe with data
     f : float
         Sample rate of data
+    tau_on : float
+        Rise time in s of Calcium kernel
+    tau_off : float
+        Decay time in s of Calcium kernel
 
     Returns
     -------
     df : pandas.DataFrame
         Dataframe with convoluted data added
     '''
-
-    tau_on, tau_off = 0.13, 0.63 # https://elifesciences.org/articles/23496#s4
 
     kern = ca_kernel(tau_on, tau_off, f)
 
