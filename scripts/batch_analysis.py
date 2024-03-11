@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 from scipy.ndimage import gaussian_filter
 
-from src.file_handling import fname, load_tiff, write_tiff
+from src.file_handling import fname, load_tiff, write_tiff, save_params_json
 from src.visualization import (
     plot_corr_heatmap,
     plot_ccf,
@@ -25,6 +25,9 @@ def generate_plots(params):
     dt_beh = params["dt_beh"]
     dt_align = params["dt_align"]
     s_align = params["s_align"]
+
+    # save params
+    save_params_json(params, p_out_all / "params_plots.json")
 
     # merge all trials and flies
     for p_df in p_out_all.glob("all_data_*.parquet"):

@@ -4,6 +4,8 @@ from pathlib import Path
 from tifffile import imwrite, imread, TiffFile
 from scipy.io import loadmat
 
+import json
+
 
 def fname(old_file, new_ending, old_root="", new_root=""):
     """Helper function to generate path for output files
@@ -261,3 +263,23 @@ def load_ball(p_mat):
     ball = ball[~nans]
 
     return ball
+
+def save_params_json(d, f):
+    """Save dictionary to json file
+
+    Parameters
+    ----------
+    d : dict
+        Dictionary to save
+    f : pathlike
+        Path to output file
+    """
+    class PathEncoder(json.JSONEncoder):
+        '''Custom JSON encoder to handle Path objects'''
+        def default(self, obj):
+            if isinstance(obj, Path):
+                return str(obj)
+            return super().default(obj)
+        
+    with open(f, "w") as f:
+        json.dump(d, f, indent=4, cls=PathEncoder)

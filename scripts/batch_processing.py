@@ -10,6 +10,7 @@ from src.file_handling import (
     get_matlab_files,
     load_ball,
     load_behavior,
+    save_params_json,
 )
 
 from src.processing import (
@@ -51,6 +52,9 @@ def motion_correction_based_on_ch2(params):
     n_z = params['n_z']
     xy_smth = params["xy_smth"]
     reg = params["reg"]
+
+    # save params
+    save_params_json(params, p_out / "params_motion_correction.json")
 
     for p_tif in p_tifs:
         print()
@@ -110,6 +114,9 @@ def extract_traces(params):
     overwrite = params["overwrite"]
     perc = params["perc"]
     winsize = params["winsize"]
+
+    # save params
+    save_params_json(params, p_out / "params_trace_extraction.json")
 
     for p_tif in p_tifs:
         print()
@@ -185,6 +192,9 @@ def extract_traces(params):
 
 
 def merge_imaging_and_behavior(params):
+
+    # save params
+    save_params_json(params, p_out / "params_merge.json")
 
     # load parameters
     p_tifs = params["p_tifs"]
