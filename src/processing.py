@@ -362,12 +362,27 @@ def ca_kernel(tau_on, tau_off, f):
     
     ca_trace = lambda a, b, c: - np.exp(-a / b) + np.exp(-a / c)
     y = ca_trace(x, tau_on, tau_off)
-
-    i_max = np.argmax(y)
-    y = np.pad(y, pad_width=(len(y) - 2 * i_max, 0))
+    from scipy.signal import gaussian
+    mode = 'delta'
+    if mode == 'original':
+        i_max = np.argmax(y)
+        y = np.pad(y, pad_width=(len(y) - 2 * i_max, 0))
+    elif mode == 'reversed':
+        i_max = np.argmax(y)
+        y = np.pad(y, pad_width=(len(y) - 2 * i_max, 0))
+        y = y[::-1]
+    elif mode == 'align0':
+        y = np.pad(y, pad_width=(len(y), 0))
+    elif mode == 'gauss75':
+        y = gaussian(1000, 75)
+    elif mode == 'delta':
+        y = np.zeros(1001)
+        y[500] = 1
 
     y = y / y.sum()
 
+
+    print(mode)
     return y
 
 def convolute_ca_kernel(df, f):
